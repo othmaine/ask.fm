@@ -1,0 +1,3 @@
+/home/ohtmaine/CLionProjects/ask/cmake-build-debug/CMakeFiles/ask.dir
+/home/ohtmaine/CLionProjects/ask/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/ohtmaine/CLionProjects/ask/cmake-build-debug/CMakeFiles/rebuild_cache.dir

@@ -211,7 +211,6 @@ void answer(std::string &from)
     }
     if(choice == "answer")
     {
-        ll id;
         for(const auto &x:users[from]->getAllUnAnswered())
         {
             std::cout<<"\nthis question ?(y/n)\n";
@@ -228,26 +227,29 @@ void answer(std::string &from)
                 std::cout<<"\nEnter the body\n";
                 std::string body;
                 std::cin>>body;
-                Answer* my_answer = new Answer(id,body);
+                Answer* my_answer = new Answer(x,body);
                 users[from]->addAnswerOrThread(my_answer->getId());
                 users[from]->removeFromNotAnswered(my_answer->getId());
-                users[from]-> // Continue
                 break;
             }
         }
     }
     else
     {
+
+    }
+    /*{
         ll id;
-        std::cout<<"Enter the name of the user";
+        std::cout<<"Enter the name of the user: ";
         std::string to;
         while(true)
         {
             std::cin>>to;
             if(users.contains(to))
                 break;
+            std::cout<<"can't find such a user\n again: ";
         }
-        for(const auto &x:users[from]->getAllAnswers()
+        for(const auto &x:users[from]->getAllAnswers())
         {
             std::cout<<"\nthis question ?(y/n)\n";
             messages[x]->print();
@@ -263,13 +265,13 @@ void answer(std::string &from)
                 std::cout<<"\nEnter the body\n";
                 std::string body;
                 std::cin>>body;
-                Answer* my_answer = new Answer(<#initializer#>, <#initializer#>, <#initializer#>, body, from);
+                Answer* my_answer = new Answer(body, from);
                 users[from]->addAnswerOrThread(my_answer->getId());
                 users[from]->removeFromNotAnswered(my_answer->getId());
                 break;
             }
         }
-    }
+    }*/
 }
 void ask(std::string &from)
 {
@@ -293,13 +295,13 @@ void ask(std::string &from)
 
 void serviceUser(std::string username)
 {
-    std::cout<<"select a choice\n(ask) a question\n(answer) a question\n(read) all answers of a user";
+    std::cout<<"select a choice\n(ask) a question\n(answer) a question\n(read) all answers of a user\n(quit)";
     std::string choice;
     while(1)
     {
         std::cout<<"\nchoice: ";
         std::cin>>choice;
-        if(choice == "ask" || choice == "answer" || choice == "read")
+        if(choice == "ask" || choice == "answer" || choice == "read" || choice == "quit")
             break;
         std::cout<<"\nWrong choice, try again";
     }
@@ -319,6 +321,11 @@ int main()
     }
     if(choice == "sign")
     {
+        std::string userName;
+        std::cout<<"enter the userName: ";
+
+        while(users.contains(userName))
+            // continue & don't miss  `back` option 
     }
 }
 // TODO use lamda instead of while(1)....etc

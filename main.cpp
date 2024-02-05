@@ -22,7 +22,16 @@ protected:
     my_to(myTo)
     {
         my_id = id;
+        messages[this->getId()] = this;
         id++;
+    }
+    void setFrom(std::string& from)
+    {
+        my_from = from;
+    }
+    void setTo(std::string& to)
+    {
+        my_to = to;
     }
 
 public:
@@ -82,13 +91,31 @@ public:
 class Answer : public Message
 {
 private:
-    ll idOfQuestion;
+    ll my_idOfQuestion;
 public:
-    Answer(const std::string &myBody, const std::string &myForm, const std::string &myTo, long long int idOfQuestion)
-            : Message(myBody, myForm, myTo), idOfQuestion(idOfQuestion) {};
+    Answer(ll idOfQuestion,
+           std::string &body) : Message(body, "", ""), my_idOfQuestion(idOfQuestion)
+    {
+        std::string to = messages[idOfQuestion]->getFrom();
+        std::string from = messages[idOfQuestion]->getTo();
+        setFrom(from);
+        setTo(to);
+    }
 };
 
+/*class Blog
+{
+private:
+    ll idQuestion,idAnswer;
+    std::string from, to;
+public:
+    Blog(long long int idQuestion, long long int idAnswer, const std::string &from, const std::string &to) : idQuestion(
+            idQuestion), idAnswer(idAnswer), from(from), to(to) {}
 
+    Blog() {}
+
+
+};*/
 
 
 
@@ -201,11 +228,10 @@ void answer(std::string &from)
                 std::cout<<"\nEnter the body\n";
                 std::string body;
                 std::cin>>body;
-                Answer* my_answer = new Answer(body,from,messages[x]->getFrom(),x);
-                messagesi
+                Answer* my_answer = new Answer(id,body);
                 users[from]->addAnswerOrThread(my_answer->getId());
                 users[from]->removeFromNotAnswered(my_answer->getId());
-                users[from]->
+                users[from]-> // Continue
                 break;
             }
         }
@@ -237,7 +263,7 @@ void answer(std::string &from)
                 std::cout<<"\nEnter the body\n";
                 std::string body;
                 std::cin>>body;
-                Answer* my_answer = new Answer(body,from,messages[x]->getFrom(),x);
+                Answer* my_answer = new Answer(<#initializer#>, <#initializer#>, <#initializer#>, body, from);
                 users[from]->addAnswerOrThread(my_answer->getId());
                 users[from]->removeFromNotAnswered(my_answer->getId());
                 break;
@@ -261,7 +287,6 @@ void ask(std::string &from)
     std::cout<<"Enter the question\n";
     std::cin>>theQuestion;
     Question* question = new Question(theQuestion,from,to);
-    messages[question->getId()] = question;
     users[to]->addQuestion(question->getId());
 }
 
@@ -296,3 +321,4 @@ int main()
     {
     }
 }
+// TODO use lamda instead of while(1)....etc

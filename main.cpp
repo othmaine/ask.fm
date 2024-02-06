@@ -68,7 +68,6 @@ public:
 
 };
 ll Message::id = 0;
-
 class Question : public Message // TODO add threads
 {
 private:
@@ -100,6 +99,11 @@ public:
         std::string from = messages[idOfQuestion]->getTo();
         setFrom(from);
         setTo(to);
+    }
+    void print()
+    {
+        messages[my_idOfQuestion]->print();
+        ((Message*)this)->print();
     }
 };
 
@@ -235,7 +239,7 @@ void answer(std::string &from)
             {
                 std::cout<<"\nEnter the body\n";
                 std::string body;
-                std::cin>>body;
+                std::getline(std::cin.ignore(),body);
                 Answer* my_answer = new Answer(x,body);
                 users[from]->addAnswerOrThread(my_answer->getId());
                 users[from]->removeFromNotAnswered(my_answer->getId());
@@ -296,21 +300,42 @@ void ask(std::string &from)
     }
     std::string theQuestion;
     std::cout<<"Enter the question\n";
-    std::cin>>theQuestion;
+    std::getline(std::cin.ignore(),theQuestion);
     Question* question = new Question(theQuestion,from,to);
     users[to]->addQuestion(question->getId());
 }
 
+void readAllAnswers()
+{
+    std::cout<<"\nWho you want to read his answer?";
+    std::string name;
+    while(true)
+    {
+        std::cout<<"\nName: ";
+        std::cin>>name;
+        if(users.contains(name))
+            break;
+        std::cout<<"\nNo user found";
+    }
+    User* user = users[name];
+    auto answers = user->getAllAnswers();
+    for(auto x:answers)
+    {
+        Answer* message = static_cast<Answer *>(messages[x]);
+        message->print();
+    }
+
+}
 
 void serviceUser(std::string username)
 {
-    std::cout<<"select a choice\n(ask) a question\n(answer) a question\n(read) all answers of a user\n(quit)";
+    std::cout<<"select a choice\n(ask) a question\n(answer) a question\n(read) all answers of a user\n(log_out)";
     std::string choice;
     while(1)
     {
         std::cout<<"\nchoice: ";
         std::cin>>choice;
-        if(choice == "ask" || choice == "answer" || choice == "read" || choice == "quit")
+        if(choice == "ask" || choice == "answer" || choice == "read" || choice == "log_out")
             break;
         std::cout<<"\nWrong choice, try again";
     }
@@ -318,6 +343,8 @@ void serviceUser(std::string username)
         ask(username);
     else if(choice == "answer")
         answer(username);
+    else if(choice == "read")
+        readAllAnswers();
 }
 void login()
 {
@@ -391,8 +418,13 @@ int main()
         for(auto& x:contin)
             if(x > 'Z')
                 x-= ('a' - 'A');
-
     }
 }
-// TODO use lamda instead of while(1)....etc
-//don't miss  `back` option
+// TODO
+//  Threads
+//  Use lamda instead of while(1)....etc
+//  Don't miss  `back` option
+//  Files, to save data
+//  Memory management
+//  Make sure that it can work in PARALLEL
+//  Set anonymous future

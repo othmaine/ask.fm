@@ -135,7 +135,8 @@ public: // CONDITION : id Must be a valid && answered message
             : Message(myBody, myForm, myTo), idOfMessage(idOfMessage){}
 };
 
-
+class User;
+std::map<std::string,User*> users;
 class User
 {
 private:
@@ -170,8 +171,16 @@ public:
     {
         return notAnswered;
     }
+    bool checkPasswordMatch(const std::string& s)
+    {
+        return s == my_password;
+    }
+    static void addUser(std::string& password, std::string& username)
+    {
+        User* user = new User(password,username);
+        users[username] = user;
+    };
 };
-std::map<std::string,User*> users;
 void createUser()
 {
     std::string username;
@@ -307,8 +316,10 @@ void serviceUser(std::string username)
     }
     if(choice == "ask")
         ask(username);
+    else if(choice == "answer")
+        answer(username);
 }
-int main()
+void login()
 {
     std::cout<<"select a choice\n(sign) in\n(create) account\nchoice: ";
     std::string choice;
@@ -322,10 +333,66 @@ int main()
     if(choice == "sign")
     {
         std::string userName;
-        std::cout<<"enter the userName: ";
+        while(true)
+        {
+            std::cout<<"enter the userName: ";
+            std::cin>>userName;
+            if(users.contains(userName))
+                break;
+            std::cout<<"Can't find such a user\n";
+        }
+        std::string password;
+        while(true)
+        {
+            std::cout<<"Enter the password: ";
+            std::cin>>password;
+            if(users[userName]->checkPasswordMatch(password))
+                break;
+            std::cout<<"Wrong password!\n ";
+        }
+        serviceUser(userName);
+    }
+    else if(choice == "create")
+    {
+        std::string userName;
+        while(true)
+        {
+            std::cout<<"enter the userName: ";
+            std::cin>>userName;
+            if(!users.contains(userName))
+                break;
+            std::cout<<"already exists, try another\n";
+        }
 
-        while(users.contains(userName))
-            // continue & don't miss  `back` option 
+        std::string password;
+        while(true)
+        {
+            std::cout<<"Enter the password: ";
+            std::cin>>password;
+            std::string confirm;
+            std::cout<<"confirm: ";
+            std::cin>>confirm;
+            if(password == confirm)
+                break;
+            std::cout<<"doesn't match!\n ";
+        }
+        User::addUser(password,userName);
+        serviceUser(userName);
+    }
+}
+int main()
+{
+    std::string contin = "YES";
+    while(contin == "YES")
+    {
+        login();
+        std::cout<<"Continue?";
+        std::cin>>contin;
+        for(auto& x:contin)
+            if(x > 'Z')
+                x-= ('a' - 'A');
+
     }
 }
 // TODO use lamda instead of while(1)....etc
+//don't miss  `back` option

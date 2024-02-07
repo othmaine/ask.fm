@@ -2,9 +2,11 @@
 #include <map>
 #include <string>
 #include <set>
+#include <vector>
 
 #define ll long long
 class Message;
+class Thread;
 std::map<ll, Message*> messages;
 std::ostream& operator<<(std::ostream &stream, Message &message);
 class Message
@@ -14,11 +16,10 @@ private:
     static ll id;
     std::string my_body;
     std::string my_from,my_to;
-    std::set<ll> threads;
 protected:
-    Message(const std::string &myBody, const std::string &myForm, const std::string &myTo)
+    Message(const std::string &myBody, const std::string &myFrom, const std::string &myTo)
     : my_body(myBody),
-    my_from(myForm),
+    my_from(myFrom),
     my_to(myTo)
     {
         my_id = id;
@@ -51,30 +52,28 @@ public:
     {
         return my_to;
     }
-    std::set<ll> getTreadsId() const
-    {
-        return threads;
-    }
-
-    void addThread(ll id)
-    {
-        threads.insert(id);
-    }
     void print()
     {
         std::cout<<*this;
 
     }
-
 };
+
+std::ostream& operator<<(std::ostream &stream, Message &message)
+{
+    std::cout<<"\nTo: "<<message.getTo()<<"\n______________\n"<<message.getBody()<<"\n"<<"______________\n"<<"From: "
+             <<message.getFrom()<<"\n___________________\n";
+    return stream;
+}
+
 ll Message::id = 0;
 class Question : public Message // TODO add threads
 {
 private:
     ll idOfAnswer;
 public:
-    Question(const std::string &myBody, const std::string &myForm, const std::string &myTo)
-    : Message(myBody, myForm,myTo)
+    Question(const std::string &myBody, const std::string &myFrom, const std::string &myTo)
+    : Message(myBody, myFrom,myTo)
     {
         idOfAnswer = -1;
     }
@@ -87,58 +86,6 @@ public:
         return idOfAnswer;
     }
 };
-class Answer : public Message
-{
-private:
-    ll my_idOfQuestion;
-public:
-    Answer(ll idOfQuestion,
-           std::string &body) : Message(body, "", ""), my_idOfQuestion(idOfQuestion)
-    {
-        std::string to = messages[idOfQuestion]->getFrom();
-        std::string from = messages[idOfQuestion]->getTo();
-        setFrom(from);
-        setTo(to);
-    }
-    void print()
-    {
-        messages[my_idOfQuestion]->print();
-        ((Message*)this)->print();
-    }
-};
-
-/*class Blog
-{
-private:
-    ll idQuestion,idAnswer;
-    std::string from, to;
-public:
-    Blog(long long int idQuestion, long long int idAnswer, const std::string &from, const std::string &to) : idQuestion(
-            idQuestion), idAnswer(idAnswer), from(from), to(to) {}
-
-    Blog() {}
-
-
-};*/
-
-
-
-
-std::ostream& operator<<(std::ostream &stream, Message &message)
-{
-    std::cout<<"\nTo: "<<message.getTo()<<"\n______________\n"<<message.getBody()<<"\n"<<"______________\n"<<"From: "
-             <<message.getFrom()<<"\n___________________\n";
-    return stream;
-}
-
-class Thread : Message
-{
-    ll idOfMessage;
-public: // CONDITION : id Must be a valid && answered message
-    Thread(const std::string &myBody, const std::string &myForm, const std::string &myTo, long long int idOfMessage)
-            : Message(myBody, myForm, myTo), idOfMessage(idOfMessage){}
-};
-
 class User;
 std::map<std::string,User*> users;
 class User
@@ -149,7 +96,7 @@ private:
 
 public:
     User(const std::string &myPassword, const std::string &myUsername) :
-    my_password(myPassword),my_username(myUsername){}
+            my_password(myPassword),my_username(myUsername){}
     void addQuestion(ll id) // The question that the user got
     {
         questions.insert(id);
@@ -185,6 +132,69 @@ public:
         users[username] = user;
     };
 };
+
+
+class Thread;
+class Answer : public Message
+{
+private:
+    ll my_idOfQuestion;
+    std::vector<ll> threads;
+public:
+    Answer(ll idOfQuestion,
+           std::string &body) : Message(body, "", ""), my_idOfQuestion(idOfQuestion)
+    {
+        std::string to = messages[idOfQuestion]->getFrom();
+        std::string from = messages[idOfQuestion]->getTo();
+        setFrom(from);
+        setTo(to);
+        users[from]->addAnswerOrThread(this->getId());
+        users[from]->removeFromNotAnswered(this->getId());
+    }
+    void addThread(ll id)
+    {
+        if(messages.count(id))
+            threads.emplace_back(id);
+        else
+            throw std::runtime_error("Thread doesn't exist");
+    }
+    std::vector<ll> getThreads()
+    {
+        return threads;
+    }
+    void print();
+};
+class Thread : public Message
+{
+    ll my_idOfMessage, my_idOfParentAnswer;
+public:
+    Thread(const std::string &myBody, const std::string &myFrom, ll idOfMessage, ll idOfParent)
+            : Message(myBody, myFrom, ""), my_idOfMessage(idOfMessage), my_idOfParentAnswer(idOfParent)
+            {
+                std::string to = messages[idOfMessage]->getFrom();
+                setTo(to);
+                users[messages[my_idOfParentAnswer]->getFrom()]->addAnswerOrThread(this->getId());
+                ((Answer*)messages[idOfParent])->addThread(this->getId());
+            }
+
+    void print()
+    {
+        std::cout<<"@"<<messages[my_idOfMessage]->getFrom()<<"\n"<<"_________________________\n";
+        std::cout<<this->getBody()<<"\n";
+        std::cout<<"From: "<<this->getFrom()<<"\n";
+        std::cout<<"_______________________________________\n";
+    }
+};
+
+void Answer::print()
+{
+    messages[my_idOfQuestion]->print();
+    std::cout<<"anwer:-\n";
+    std::cout<<((Message*)this)->getBody();
+    for(const auto& x:threads)
+        ((Thread*)messages[x])->print();
+}
+
 void createUser()
 {
     std::string username;
@@ -209,25 +219,59 @@ void createUser()
     }
     users[username] = new User(username,password);
 }
-void answer(std::string &from)
+void answer(std::string& from)
 {
-    std::cout<<"\n (answer) or (thread)?(y)/(n)";
     std::string choice;
+    for(const auto &x:users[from]->getAllUnAnswered())
+    {
+        std::cout<<"\nthis question ?(y/n)\n";
+        messages[x]->print();
+        while(true)
+        {
+            std::cin>>choice;
+            if(choice == "y" || choice == "n")
+                break;
+            std::cerr<<"\n(y\n) ONLY\n";
+        }
+        if(choice == "y")
+        {
+            std::cout<<"\nEnter the body\n";
+            std::string body;
+            std::getline(std::cin.ignore(),body);
+            Answer* my_answer = new Answer(x,body);
+            break;
+        }
+    }
+
+}
+
+void thread(std::string& from)
+{
+    std::string choice;
+    ll id;
+    std::cout<<"Enter the name of the user: ";
+    std::string to;
     while(true)
     {
-        std::cout<<"\nchoice: ";
-        std::cin>>choice;
-        if(choice == "answer" || choice == "thread")
+        std::cin>>to;
+        if(users.contains(to))
             break;
-        std::cerr<<"\nanswer or thread ONLY !!";
-
+        std::cout<<"can't find such a user\n again: ";
     }
-    if(choice == "answer")
+    for(const auto &x:users[to]->getAllAnswers())
     {
-        for(const auto &x:users[from]->getAllUnAnswered())
+        std::cout<<"\nthis question ?(y/n)\n";
+        ((Answer*)messages[x])->print();
+        while(true)
         {
-            std::cout<<"\nthis question ?(y/n)\n";
-            messages[x]->print();
+            std::cin>>choice;
+            if(choice == "y" || choice == "n")
+                break;
+            std::cerr<<"\n(y\n) ONLY\n";
+        }
+        if(choice == "y")
+        {
+            std::cout<<"the main answer ?";
             while(true)
             {
                 std::cin>>choice;
@@ -240,51 +284,52 @@ void answer(std::string &from)
                 std::cout<<"\nEnter the body\n";
                 std::string body;
                 std::getline(std::cin.ignore(),body);
-                Answer* my_answer = new Answer(x,body);
-                users[from]->addAnswerOrThread(my_answer->getId());
-                users[from]->removeFromNotAnswered(my_answer->getId());
+                Thread* thread = new Thread(body,from,x,x);
                 break;
             }
+            for(const auto &y: ((Answer*)messages[x])->getThreads())
+            {
+                std::cout<<"\nthis thread ?(y/n)\n";
+                messages[y]->print();
+                while(true)
+                {
+                    std::cin>>choice;
+                    if(choice == "y" || choice == "n")
+                        break;
+                    std::cerr<<"\n(y\n) ONLY\n";
+                }
+                if(choice == "y")
+                {
+                    std::cout<<"\nEnter the body\n";
+                    std::string body;
+                    std::getline(std::cin.ignore(),body);
+                    Thread* thread = new Thread(body,from,y,x);
+                    break;
+                }
+            }
+            break;
         }
     }
-    else
+
+}
+
+void answerOrThread(std::string &from)
+{
+    std::cout<<"\n (answer) or (thread)?";
+    std::string choice;
+    while(true)
     {
+        std::cout<<"\nchoice: ";
+        std::cin>>choice;
+        if(choice == "answer" || choice == "thread")
+            break;
+        std::cerr<<"\nanswer or thread ONLY !!";
 
     }
-    /*{
-        ll id;
-        std::cout<<"Enter the name of the user: ";
-        std::string to;
-        while(true)
-        {
-            std::cin>>to;
-            if(users.contains(to))
-                break;
-            std::cout<<"can't find such a user\n again: ";
-        }
-        for(const auto &x:users[from]->getAllAnswers())
-        {
-            std::cout<<"\nthis question ?(y/n)\n";
-            messages[x]->print();
-            while(true)
-            {
-                std::cin>>choice;
-                if(choice == "y" || choice == "n")
-                    break;
-                std::cerr<<"\n(y\n) ONLY\n";
-            }
-            if(choice == "y")
-            {
-                std::cout<<"\nEnter the body\n";
-                std::string body;
-                std::cin>>body;
-                Answer* my_answer = new Answer(body, from);
-                users[from]->addAnswerOrThread(my_answer->getId());
-                users[from]->removeFromNotAnswered(my_answer->getId());
-                break;
-            }
-        }
-    }*/
+    if(choice == "answer")
+        answer(from);
+    else
+        thread(from);
 }
 void ask(std::string &from)
 {
@@ -342,10 +387,11 @@ void serviceUser(std::string username)
     if(choice == "ask")
         ask(username);
     else if(choice == "answer")
-        answer(username);
+        answerOrThread(username);
     else if(choice == "read")
         readAllAnswers();
 }
+
 void login()
 {
     std::cout<<"select a choice\n(sign) in\n(create) account\nchoice: ";
@@ -421,7 +467,6 @@ int main()
     }
 }
 // TODO
-//  Threads
 //  Use lamda instead of while(1)....etc
 //  Don't miss  `back` option
 //  Files, to save data

@@ -3,6 +3,9 @@
 #include <string>
 #include <set>
 #include <vector>
+#include <memory>
+#include <fstream>
+#include <filesystem>
 
 #define ll long long
 class Message;
@@ -91,36 +94,48 @@ std::map<std::string,User*> users;
 class User
 {
 private:
+    std::fstream fout;
+    std::fstream qout;
+    std::fstream aout;
     std::string my_password,my_username;
-    std::set<ll> questions,answers,notAnswered;
+    std::set<ll> questions,answers,answered;
 
 public:
     User(const std::string &myPassword, const std::string &myUsername) :
-            my_password(myPassword),my_username(myUsername){}
+            my_password(myPassword),my_username(myUsername)
+        {
+            std::filesystem::create_directory("Users/" + my_username);
+            fout.open("Users/"+my_username+"/password.txt",std::ios::app|std::ios::in|std::ios::in); // TODO hash the password
+            fout<<my_password;
+            fout.close();
+            qout.open("Users/" + my_username + "/questions.txt");
+            aout.open("Users/" + my_username + "/answers.txt");
+        }
     void addQuestion(ll id) // The question that the user got
     {
         questions.insert(id);
-        notAnswered.insert(id);
+        qout<<id<<" ";
     }
     void addAnswerOrThread(ll id)
     {
         answers.insert(id);
+        aout<<id;
     }
-    void removeFromNotAnswered(ll id)
+    void addToAnswered(ll id)
     {
-        notAnswered.erase(id);
+        answered.insert(id);
     }
     std::set<ll> getAllQuestions()
     {
         return questions;
     }
+    std::set<ll> getAllAnswered()
+    {
+        return answered;
+    }
     std::set<ll> getAllAnswers()
     {
         return answers;
-    }
-    std::set<ll> getAllUnAnswered()
-    {
-        return notAnswered;
     }
     bool checkPasswordMatch(const std::string& s)
     {
@@ -128,8 +143,7 @@ public:
     }
     static void addUser(std::string& password, std::string& username)
     {
-        User* user = new User(password,username);
-        users[username] = user;
+        users[username] =new User(password,username);
     };
 };
 
@@ -149,7 +163,7 @@ public:
         setFrom(from);
         setTo(to);
         users[from]->addAnswerOrThread(this->getId());
-        users[from]->removeFromNotAnswered(this->getId());
+        users[from]->addToAnswered(this->getId());
     }
     void addThread(ll id)
     {
@@ -222,8 +236,10 @@ void createUser()
 void answer(std::string& from)
 {
     std::string choice;
-    for(const auto &x:users[from]->getAllUnAnswered())
+    for(const auto &x:users[from]->getAllQuestions())
     {
+        if(users[from]->getAllAnswered().count(x))
+            continue;
         std::cout<<"\nthis question ?(y/n)\n";
         messages[x]->print();
         while(true)
@@ -242,7 +258,6 @@ void answer(std::string& from)
             break;
         }
     }
-
 }
 
 void thread(std::string& from)
@@ -331,6 +346,7 @@ void answerOrThread(std::string &from)
     else
         thread(from);
 }
+
 void ask(std::string &from)
 {
     std::string to;
@@ -453,8 +469,13 @@ void login()
         serviceUser(userName);
     }
 }
+void begin()
+{
+    std::filesystem::create_directory("Users");
+}
 int main()
 {
+    begin();
     std::string contin = "YES";
     while(contin == "YES")
     {
@@ -470,6 +491,6 @@ int main()
 //  Use lamda instead of while(1)....etc
 //  Don't miss  `back` option
 //  Files, to save data
-//  Memory management
 //  Make sure that it can work in PARALLEL
 //  Set anonymous future
+//  separate code into files

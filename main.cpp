@@ -27,6 +27,10 @@ protected:
     {
         my_id = id;
         messages[this->getId()] = this;
+        std::fstream fout;
+        fout.open("Messages/" + std::to_string(my_id) + ".txt",std::ios::app|std::ios::in|std::ios::in);
+        fout<<my_from<<"\n"<<my_to<<"\n"<<my_body;
+        fout.close();
         id++;
     }
     void setFrom(std::string& from)
@@ -97,6 +101,7 @@ private:
     std::fstream fout;
     std::fstream qout;
     std::fstream aout;
+    std::streampos questionSize, answerSize;
     std::string my_password,my_username;
     std::set<ll> questions,answers,answered;
 
@@ -108,18 +113,45 @@ public:
             fout.open("Users/"+my_username+"/password.txt",std::ios::app|std::ios::in|std::ios::in); // TODO hash the password
             fout<<my_password;
             fout.close();
-            qout.open("Users/" + my_username + "/questions.txt");
-            aout.open("Users/" + my_username + "/answers.txt");
         }
+    void updateQuestions()
+    {
+        qout.open("Users/"+my_username+"/questions.txt",std::ios::app|std::ios::in|std::ios::in); // TODO hash the password
+        qout.seekg(questionSize);
+        ll neId;
+        while(qout>>neId)
+            questions.insert(neId);
+        questionSize = qout.tellg();
+        qout.close();
+    }
+
+    void updateAnswers()
+    {
+        updateQuestions();
+        aout.open("Users/"+my_username+"/answers.txt",std::ios::app|std::ios::in|std::ios::in); // TODO hash the password
+        aout.seekg(answerSize);
+        ll neId;
+        while(aout>>neId)
+            answers.insert(neId);
+        answerSize = aout.tellg();
+        aout.close();
+    }
+
     void addQuestion(ll id) // The question that the user got
     {
+        qout.open("Users/"+my_username+"/questions.txt",std::ios::app|std::ios::in|std::ios::in); // TODO hash the password
         questions.insert(id);
         qout<<id<<" ";
+        questionSize = qout.tellg();
+        qout.close();
     }
     void addAnswerOrThread(ll id)
     {
+        aout.open("Users/"+my_username+"/answers.txt",std::ios::app|std::ios::in|std::ios::in); // TODO hash the password
         answers.insert(id);
         aout<<id;
+        answerSize = aout.tellg();
+        aout.close();
     }
     void addToAnswered(ll id)
     {
@@ -472,6 +504,7 @@ void login()
 void begin()
 {
     std::filesystem::create_directory("Users");
+    std::filesystem::create_directory("Messages");
 }
 int main()
 {

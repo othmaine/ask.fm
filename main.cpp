@@ -20,17 +20,22 @@ private:
     std::string my_body;
     std::string my_from,my_to;
 protected:
-    Message(const std::string &myBody, const std::string &myFrom, const std::string &myTo)
+    Message(const std::string &myBody, const std::string &myFrom, const std::string &myTo, bool updating = false)
     : my_body(myBody),
     my_from(myFrom),
     my_to(myTo)
     {
-        my_id = id;
-        messages[this->getId()] = this;
+        std::map<ll, Message*>& debuggin = messages;
         std::fstream fout;
-        fout.open("Messages/" + std::to_string(my_id) + ".txt",std::ios::app|std::ios::in|std::ios::in);
-        fout<<my_from<<"\n"<<my_to<<"\n"<<my_body;
-        fout.close();
+        my_id = id;
+        if(!updating)
+        {
+            update();
+            fout.open("Messages/" + std::to_string(my_id) + ".txt",std::ios::app|std::ios::in|std::ios::in);
+            fout<<my_from<<"\n"<<my_to<<"\n"<<my_body;
+            fout.close();
+        }
+        messages[this->getId()] = this;
         id++;
     }
     void setFrom(std::string& from)
@@ -43,6 +48,22 @@ protected:
     }
 
 public:
+    static void update()
+    {
+        std::fstream fout;
+        while(std::filesystem::exists("Messages/" + std::to_string(id) + ".txt"))
+        {
+            std::string from,to,body;
+            fout.open("Messages/" + std::to_string(id) + ".txt",std::ios::app|std::ios::in|std::ios::in);
+            fout>>from>>to;
+            std::string temp;
+            body = "";
+            while(fout>>temp)
+                body += temp;
+            Message(body,from,to,true);
+            fout.close();
+        }
+    }
     ll getId() const
     {
         return my_id;
@@ -61,6 +82,10 @@ public:
     }
     void print()
     {
+        std::map<ll, Message*>& debuggin = messages;
+        for(auto x:messages) // debugging
+            std::cout<<x.first<<std::endl;
+
         std::cout<<*this;
 
     }
@@ -74,7 +99,7 @@ std::ostream& operator<<(std::ostream &stream, Message &message)
 }
 
 ll Message::id = 0;
-class Question : public Message // TODO add threads
+class Question : public Message
 {
 private:
     ll idOfAnswer;
@@ -105,18 +130,24 @@ private:
     std::string my_password,my_username;
     std::set<ll> questions,answers,answered;
 
-public:
     User(const std::string &myPassword, const std::string &myUsername) :
             my_password(myPassword),my_username(myUsername)
         {
+            //update(); // why??
             std::filesystem::create_directory("Users/" + my_username);
+            if(std::filesystem::exists("Users/"+my_username+"/password.txt"))
+                return;
             fout.open("Users/"+my_username+"/password.txt",std::ios::app|std::ios::in|std::ios::in); // TODO hash the password
             fout<<my_password;
             fout.close();
         }
+public:
     void updateQuestions()
     {
-        qout.open("Users/"+my_username+"/questions.txt",std::ios::app|std::ios::in|std::ios::in); // TODO hash the password
+        Message::update();
+        messages[0]->print(); // debug
+        std::cout<<std::endl;
+        qout.open("Users/"+my_username+"/questions.txt",std::ios::app|std::ios::in|std::ios::in);
         qout.seekg(questionSize);
         ll neId;
         while(qout>>neId)
@@ -125,10 +156,10 @@ public:
         qout.close();
     }
 
-    void updateAnswers()
+    void update()
     {
         updateQuestions();
-        aout.open("Users/"+my_username+"/answers.txt",std::ios::app|std::ios::in|std::ios::in); // TODO hash the password
+        aout.open("Users/"+my_username+"/answers.txt",std::ios::app|std::ios::in|std::ios::in);
         aout.seekg(answerSize);
         ll neId;
         while(aout>>neId)
@@ -139,7 +170,7 @@ public:
 
     void addQuestion(ll id) // The question that the user got
     {
-        qout.open("Users/"+my_username+"/questions.txt",std::ios::app|std::ios::in|std::ios::in); // TODO hash the password
+        qout.open("Users/"+my_username+"/questions.txt",std::ios::app|std::ios::in|std::ios::in);
         questions.insert(id);
         qout<<id<<" ";
         questionSize = qout.tellg();
@@ -147,7 +178,7 @@ public:
     }
     void addAnswerOrThread(ll id)
     {
-        aout.open("Users/"+my_username+"/answers.txt",std::ios::app|std::ios::in|std::ios::in); // TODO hash the password
+        aout.open("Users/"+my_username+"/answers.txt",std::ios::app|std::ios::in|std::ios::in);
         answers.insert(id);
         aout<<id;
         answerSize = aout.tellg();
@@ -159,14 +190,17 @@ public:
     }
     std::set<ll> getAllQuestions()
     {
+        update();
         return questions;
     }
     std::set<ll> getAllAnswered()
     {
+        update();
         return answered;
     }
     std::set<ll> getAllAnswers()
     {
+        update();
         return answers;
     }
     bool checkPasswordMatch(const std::string& s)
@@ -177,6 +211,17 @@ public:
     {
         users[username] =new User(password,username);
     };
+    static void addUser(std::string &username)
+    {
+        if(users.count(username))
+            return;
+        std::fstream fout;
+        fout.open("Users/"+username+"/password.txt",std::ios::app|std::ios::in|std::ios::in); // TODO hash the password
+        std::string password;
+        fout>>password;
+        fout.close();
+        addUser(password,username);
+    }
 };
 
 
@@ -199,6 +244,7 @@ public:
     }
     void addThread(ll id)
     {
+        Message::update();
         if(messages.count(id))
             threads.emplace_back(id);
         else
@@ -248,8 +294,11 @@ void createUser()
     {
         std::cout<<"\nEnter the user name";
         std::cin>>username;
-        if(!users.count(username))
+        if(!users.count(username) && !std::filesystem::exists("Users/"+username))
+        {
+            User::addUser(username);
             break;
+        }
         std::cout<<"\nthis name is already used, try again: ";
     }
     std::string password, confirm;
@@ -263,10 +312,11 @@ void createUser()
             break;
         std::cout<<"doesn't match, try again\n";
     }
-    users[username] = new User(username,password);
+    User::addUser(password,username);
 }
 void answer(std::string& from)
 {
+    messages[0]->print();
     std::string choice;
     for(const auto &x:users[from]->getAllQuestions())
     {
@@ -301,8 +351,11 @@ void thread(std::string& from)
     while(true)
     {
         std::cin>>to;
-        if(users.contains(to))
+        if(users.count(to) || std::filesystem::exists("Users/"+to))
+        {
+            User::addUser(to);
             break;
+        }
         std::cout<<"can't find such a user\n again: ";
     }
     for(const auto &x:users[to]->getAllAnswers())
@@ -362,6 +415,7 @@ void thread(std::string& from)
 
 void answerOrThread(std::string &from)
 {
+    messages[0]->print(); // debugging
     std::cout<<"\n (answer) or (thread)?";
     std::string choice;
     while(true)
@@ -387,8 +441,11 @@ void ask(std::string &from)
     {
         std::cout<<"\nName: ";
         std::cin>>to;
-        if(users.contains(to))
+        if(users.count(to) || std::filesystem::exists("Users/"+to))
+        {
+            User::addUser(to);
             break;
+        }
         std::cout<<"\nNo user found";
     }
     std::string theQuestion;
@@ -397,7 +454,6 @@ void ask(std::string &from)
     Question* question = new Question(theQuestion,from,to);
     users[to]->addQuestion(question->getId());
 }
-
 void readAllAnswers()
 {
     std::cout<<"\nWho you want to read his answer?";
@@ -406,8 +462,11 @@ void readAllAnswers()
     {
         std::cout<<"\nName: ";
         std::cin>>name;
-        if(users.contains(name))
+        if(users.count(name) || std::filesystem::exists("Users/"+name+".txt"))
+        {
+            User::addUser(name);
             break;
+        }
         std::cout<<"\nNo user found";
     }
     User* user = users[name];
@@ -422,6 +481,9 @@ void readAllAnswers()
 
 void serviceUser(std::string username)
 {
+    Message::update();
+    messages[0]->print(); // debugging
+    std::cout<<std::endl;
     std::cout<<"select a choice\n(ask) a question\n(answer) a question\n(read) all answers of a user\n(log_out)";
     std::string choice;
     while(1)
@@ -458,8 +520,11 @@ void login()
         {
             std::cout<<"enter the userName: ";
             std::cin>>userName;
-            if(users.contains(userName))
+            if(users.count(userName)  ||std::filesystem::exists("Users/"+userName))
+            {
+                User::addUser(userName);
                 break;
+            }
             std::cout<<"Can't find such a user\n";
         }
         std::string password;
@@ -480,7 +545,7 @@ void login()
         {
             std::cout<<"enter the userName: ";
             std::cin>>userName;
-            if(!users.contains(userName))
+            if(!users.count(userName) && !std::filesystem::exists("Users/"+userName))
                 break;
             std::cout<<"already exists, try another\n";
         }
@@ -501,6 +566,7 @@ void login()
         serviceUser(userName);
     }
 }
+
 void begin()
 {
     std::filesystem::create_directory("Users");
@@ -525,5 +591,3 @@ int main()
 //  Don't miss  `back` option
 //  Files, to save data
 //  Make sure that it can work in PARALLEL
-//  Set anonymous future
-//  separate code into files
